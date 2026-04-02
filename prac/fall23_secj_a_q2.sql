@@ -82,7 +82,11 @@ SELECT e.first_name || ' ' || e.last_name AS full_name, j.job_title,
 jh.start_date, jh.end_date
 FROM employees e
 JOIN jobs j ON j.job_id = e.job_id
-JOIN job_history jh ON jh.employee_id = e.employee_id
+JOIN (
+    SELECT EMPLOYEE_ID, MAX(START_DATE) AS start_date , MAX(END_DATE) AS end_date 
+    FROM job_history
+    GROUP BY employee_id
+) jh ON jh.employee_id = e.employee_id
 WHERE e.commission_pct IS NULL;
 
 -- 10. Query to calculate the total salary for each state where the second letter of the state name is 'a'
