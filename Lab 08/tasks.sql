@@ -12,18 +12,18 @@ FOR EACH ROW
 BEGIN
     INSERT INTO employee_bonus VALUES (
         :NEW.employee_id,
-        :NEW.salary * 0.01
+        :NEW.salary * 0.10
     );
 END;
 /
 
 -- Create a trigger that checks the new salary value being updated in the employees table. If the  new salary is greater than a threshold (say 10,000), display an error message to the user. 
 CREATE OR REPLACE TRIGGER trgg_slr_hbound_chk
-BEFORE UPDATE ON employyes
+BEFORE UPDATE ON employees
 FOR EACH ROW
 BEGIN 
     IF :NEW.salary > 10000 THEN
-        RAISE_APPLICATION_ERROR(-200022, 'Cannot update salary > 10000');
+        RAISE_APPLICATION_ERROR(-20022, 'Cannot update salary > 10000');
     END IF;
 END;
 /
@@ -63,7 +63,7 @@ CREATE TABLE audit_log_table (
 );
 
 CREATE OR REPLACE TRIGGER trgg_create_tbl
-AFTER INSERT ON SCHEMA
+AFTER CREATE ON SCHEMA
 DECLARE
     v_user VARCHAR(20);
 BEGIN
@@ -80,9 +80,11 @@ END;
 CREATE OR REPLACE TRIGGER trgg_alt_time
 BEFORE ALTER ON SCHEMA
 BEGIN
-    IF TO_NUMBER(TO_CHAR(SYSDATE, 'hh24')) >= 18 OR
-        TO_NUMBER(TO_CHAR(SYSDATE, 'hh24')) < 8 THEN
-        RAISE_APPLICATION_ERROR(-20002, 'Changes not allowed after business hrs');
+    IF ora_dict_obj_name = 'EMPLOYEES' THEN
+        IF TO_NUMBER(TO_CHAR(SYSDATE, 'hh24')) >= 18 OR
+            TO_NUMBER(TO_CHAR(SYSDATE, 'hh24')) < 8 THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Changes not allowed after business hrs');
+        END IF;
     END IF;
 END;
 /
@@ -186,7 +188,7 @@ DECLARE
     v_login_time  DATE;
     v_duration    NUMBER;
 BEGIN
-    SELECT login_time INTO v_login_time
+    SELECT MAX(login_time) INTO v_login_time
     FROM session_log
     WHERE username = ora_login_user;
 
@@ -231,11 +233,11 @@ END;
 CREATE VIEW emp_salaries AS
 SELECT e.employee_id, e.first_name, e.last_name, s.salary
 FROM employees e
-FOR EACH ROW
 JOIN salaries s ON e.employee_id = s.employee_id;
 
 CREATE OR REPLACE TRIGGER trgg_upd_emp_salaries
 INSTEAD OF UPDATE ON emp_salaries
+FOR EACH ROW
 BEGIN
     IF :NEW.salary < 0.8 * :OLD.salary THEN
         RAISE_APPLICATION_ERROR(-20001, 'Cannot decrease salary by more than 20%');
@@ -246,4 +248,3 @@ BEGIN
     END IF;
 END;
 /
-
